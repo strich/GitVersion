@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\LibGit2Sharp.NativeBinaries.1.0.137\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\packages\LibGit2Sharp.NativeBinaries.1.0.137\build\LibGit2Sharp.NativeBinaries.props')" />
+  <Import Project="..\packages\LibGit2Sharp.NativeBinaries.1.0.160\build\LibGit2Sharp.NativeBinaries.props" Condition="Exists('..\packages\LibGit2Sharp.NativeBinaries.1.0.160\build\LibGit2Sharp.NativeBinaries.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -39,8 +39,8 @@
     <NoWarn>1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="GitTools.Core, Version=1.2.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\GitTools.Core.1.2.0\lib\net4\GitTools.Core.dll</HintPath>
+    <Reference Include="GitTools.Core, Version=1.2.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\GitTools.Core.1.2.1-beta0001\lib\net4\GitTools.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="JetBrains.Annotations, Version=8.1.11.55, Culture=neutral, PublicKeyToken=1010a0d8d6380325, processorArchitecture=MSIL">
@@ -48,7 +48,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="LibGit2Sharp, Version=0.23.0.0, Culture=neutral, PublicKeyToken=7cbde695407f0333, processorArchitecture=MSIL">
-      <HintPath>..\packages\LibGit2Sharp.0.23.0-pre20150419160303\lib\net40\LibGit2Sharp.dll</HintPath>
+      <HintPath>..\packages\LibGit2Sharp.0.23.0-pre20160922233542\lib\net40\LibGit2Sharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -72,6 +72,7 @@
     <Compile Include="AssemblyVersioningScheme.cs" />
     <Compile Include="AssemblyVersionsGenerator.cs" />
     <Compile Include="Authentication.cs" />
+    <Compile Include="BranchCommit.cs" />
     <Compile Include="BranchConfigurationCalculator.cs" />
     <Compile Include="BuildServers\AppVeyor.cs" />
     <Compile Include="BuildServers\BuildServerBase.cs" />
@@ -98,6 +99,7 @@
     <Compile Include="Configuration\ConfigSerialiser.cs" />
     <Compile Include="Configuration\ConfigurationProvider.cs" />
     <Compile Include="Configuration\IncrementStrategy.cs" />
+    <Compile Include="Configuration\LegacyBranchConfig.cs" />
     <Compile Include="Configuration\LegacyConfig.cs" />
     <Compile Include="Configuration\LegacyConfigNotifier.cs" />
     <Compile Include="Configuration\OldConfigurationException.cs" />
@@ -120,6 +122,7 @@
     <Compile Include="ExecuteCore.cs" />
     <Compile Include="Extensions\ReadEmbeddedResourceExtensions.cs" />
     <Compile Include="GitPreparer.cs" />
+    <Compile Include="GitRepoMetadataProvider.cs" />
     <Compile Include="GitVersionCache.cs" />
     <Compile Include="GitVersionCacheKey.cs" />
     <Compile Include="GitVersionCacheKeyFactory.cs" />
@@ -133,6 +136,7 @@
     <Compile Include="OutputVariables\VersionVariables.cs" />
     <Compile Include="SemanticVersionExtensions.cs" />
     <Compile Include="SemanticVersionFormatValues.cs" />
+    <Compile Include="VerbosityLevel.cs" />
     <Compile Include="VersionFilters\MinDateVersionFilter.cs" />
     <Compile Include="VersionFilters\IVersionFilter.cs" />
     <Compile Include="VersionFilters\ShaVersionFilter.cs" />
@@ -144,7 +148,7 @@
     <Compile Include="VersionCalculation\BaseVersionCalculators\ConfigNextVersionBaseVersionStrategy.cs" />
     <Compile Include="VersionCalculation\BaseVersionCalculators\TaggedCommitVersionStrategy.cs" />
     <Compile Include="VersionCalculation\BaseVersionCalculators\MergeMessageBaseVersionStrategy.cs" />
-    <Compile Include="VersionCalculation\BaseVersionCalculators\VersionInBranchBaseVersionStrategy.cs" />
+    <Compile Include="VersionCalculation\BaseVersionCalculators\VersionInBranchNameBaseVersionStrategy.cs" />
     <Compile Include="VersionCalculation\BaseVersionStrategy.cs" />
     <Compile Include="VersionCalculation\DevelopVersionStrategy.cs" />
     <Compile Include="VersionCalculation\FallbackBaseVersionStrategy.cs" />
@@ -197,7 +201,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\PepitaPackage.1.21.4\build\PepitaPackage.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\PepitaPackage.1.21.4\build\PepitaPackage.targets'))" />
     <Error Condition="!Exists('..\packages\Fody.1.29.4\build\portable-net+sl+win+wpa+wp\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Fody.1.29.4\build\portable-net+sl+win+wpa+wp\Fody.targets'))" />
-    <Error Condition="!Exists('..\packages\LibGit2Sharp.NativeBinaries.1.0.137\build\LibGit2Sharp.NativeBinaries.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\LibGit2Sharp.NativeBinaries.1.0.137\build\LibGit2Sharp.NativeBinaries.props'))" />
+    <Error Condition="!Exists('..\packages\LibGit2Sharp.NativeBinaries.1.0.160\build\LibGit2Sharp.NativeBinaries.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\LibGit2Sharp.NativeBinaries.1.0.160\build\LibGit2Sharp.NativeBinaries.props'))" />
   </Target>
   <PropertyGroup>
     <PostBuildEvent>

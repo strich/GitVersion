@@ -5,6 +5,11 @@
     using System.Linq;
     using LibGit2Sharp;
 
+    /// <summary>
+    /// Version is extracted from all tags on the branch which are valid, and not newer than the current commit.
+    /// BaseVersionSource is the tag's commit.
+    /// Increments if the tag is not the current commit.
+    /// </summary>
     public class TaggedCommitVersionStrategy : BaseVersionStrategy
     {
         public override IEnumerable<BaseVersion> GetVersions(GitVersionContext context)
@@ -40,7 +45,7 @@
         BaseVersion CreateBaseVersion(GitVersionContext context, VersionTaggedCommit version)
         {
             var shouldUpdateVersion = version.Commit.Sha != context.CurrentCommit.Sha;
-            var baseVersion = new BaseVersion(FormatSource(version), shouldUpdateVersion, version.SemVer, version.Commit, null);
+            var baseVersion = new BaseVersion(context, FormatSource(version), shouldUpdateVersion, version.SemVer, version.Commit, null);
             return baseVersion;
         }
 

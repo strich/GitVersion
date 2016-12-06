@@ -1,4 +1,4 @@
-﻿# Configuration
+# Configuration
 GitVersion 3.0 is mainly powered by configuration and no longer has branching
 strategies hard coded.
 
@@ -32,6 +32,7 @@ next-version: 1.0
 assembly-versioning-scheme: MajorMinorPatch
 assembly-informational-format: '{InformationalVersion}'
 mode: ContinuousDelivery
+increment: Inherit
 continuous-delivery-fallback-tag: ci
 tag-prefix: '[vV]'
 major-version-bump-message: '\+semver:\s?(breaking|major)'
@@ -69,6 +70,11 @@ value of the `AssemblyInformationalVersion` attribute. Default set to
 ### mode
 Sets the `mode` of how GitVersion should create a new version. Read more at
 [versioning mode](/reference/versioning-mode.md).
+
+### increment
+The part of the SemVer to increment when GitVersion detects it needs to be increased, such as for commits after a tag: `Major`, `Minor`, `Patch`, `None`.
+
+The special value `Inherit` means that GitVersion should find the parent branch (i.e. the branch where the current branch was branched from), and use its values for [increment](#increment), [prevent-increment-of-merged-branch-version](#prevent-increment-of-merged-branch-version) and [is-develop](#is-develop).
 
 ### continuous-delivery-fallback-tag
 When using `mode: ContinuousDeployment`, the value specified in
@@ -163,7 +169,7 @@ branches:
     increment: Patch
     prevent-increment-of-merged-branch-version: true
     track-merge-target: false
-    is-develop: false
+    tracks-release-branches: false
     is-release-branch: false
   release:
     regex: releases?[/-]
@@ -172,7 +178,7 @@ branches:
     increment: Patch
     prevent-increment-of-merged-branch-version: true
     track-merge-target: false
-    is-develop: false
+    tracks-release-branches: false
     is-release-branch: true
   feature:
     regex: features?[/-]
@@ -181,7 +187,7 @@ branches:
     increment: Inherit
     prevent-increment-of-merged-branch-version: false
     track-merge-target: false
-    is-develop: false
+    tracks-release-branches: false
     is-release-branch: false
   pull-request:
     regex: (pull|pull\-requests|pr)[/-]
@@ -191,7 +197,7 @@ branches:
     prevent-increment-of-merged-branch-version: false
     tag-number-pattern: '[/-](?<number>\d+)[-/]'
     track-merge-target: false
-    is-develop: false
+    tracks-release-branches: false
     is-release-branch: false
   hotfix:
     regex: hotfix(es)?[/-]
@@ -200,7 +206,7 @@ branches:
     increment: Patch
     prevent-increment-of-merged-branch-version: false
     track-merge-target: false
-    is-develop: false
+    tracks-release-branches: false
     is-release-branch: false
   support:
     regex: support[/-]
@@ -209,7 +215,7 @@ branches:
     increment: Patch
     prevent-increment-of-merged-branch-version: true
     track-merge-target: false
-    is-develop: false
+    tracks-release-branches: false
     is-release-branch: false
   develop:
     regex: dev(elop)?(ment)?$
@@ -218,7 +224,7 @@ branches:
     increment: Minor
     prevent-increment-of-merged-branch-version: false
     track-merge-target: true
-    is-develop: true
+    tracks-release-branches: true
     is-release-branch: false
 ```
 
@@ -246,8 +252,7 @@ of `alpha.foo` with the value of `alpha.{BranchName}`.
 **Note:** To clear a default use an empty string: `tag: ''`
 
 ### increment
-The part of the SemVer to increment when GitVersion detects it needs to be (i.e
-commit after a tag)
+Same as for the [global configuration, explained above](#increment).
 
 ### prevent-increment-of-merged-branch-version
 When `release-2.0.0` is merged into master, we want master to build `2.0.0`. If
@@ -282,7 +287,7 @@ Strategy which will look for tagged merge commits directly off the current
 branch. For example `develop` → `release/1.0.0` → merge into `master` and tag
 `1.0.0`. The tag is *not* on develop, but develop should be version `1.0.0` now.
 
-### is-develop
+### tracks-release-branches
 Indicates this branch config represents develop in GitFlow.
 
 ### is-release-branch

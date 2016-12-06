@@ -150,6 +150,16 @@ namespace GitVersion
                 }
 
 
+                if (name.IsSwitch("diag"))
+                {
+                    if (value == null || value.IsTrue())
+                    {
+                        arguments.Diag = true;
+                    }
+                    continue;
+                }
+
+
                 if (name.IsSwitch("updateAssemblyInfo"))
                 {
                     if (value.IsTrue())
@@ -309,6 +319,15 @@ namespace GitVersion
                 if (name.IsSwitch("nocache"))
                 {
                     arguments.NoCache = true;
+                    continue;
+                }
+
+                if (name.IsSwitch("verbosity"))
+                {
+                    if (!Enum.TryParse(value, true, out arguments.Verbosity))
+                    {
+                        throw new WarningException(String.Format("Could not parse Verbosity value '{0}'", value));
+                    }
                     continue;
                 }
 

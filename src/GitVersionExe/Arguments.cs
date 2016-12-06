@@ -10,6 +10,7 @@ namespace GitVersion
             OverrideConfig = new Config();
             Output = OutputType.Json;
             UpdateAssemblyInfoFileName = new HashSet<string>();
+            Verbosity = VerbosityLevel.Info;
         }
 
         public Authentication Authentication;
@@ -25,6 +26,7 @@ namespace GitVersion
         public string DynamicRepositoryLocation;
 
         public bool Init;
+        public bool Diag;
 
         public bool IsHelp;
         public string LogFilePath;
@@ -44,6 +46,8 @@ namespace GitVersion
         public bool ShowConfig;
         public bool NoFetch;
         public bool NoCache;
+
+        public VerbosityLevel Verbosity;
 
         public void AddAssemblyInfoFileName(string fileName)
         {

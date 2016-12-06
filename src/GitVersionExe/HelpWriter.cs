@@ -17,6 +17,7 @@ GitVersion [path]
 
     path            The directory containing .git. If not defined current directory is used. (Must be first argument)
     init            Configuration utility for gitversion
+    /diag           Runs GitVersion with additional diagnostic information (requires git.exe to be installed)
     /h or /?        Shows Help
 
     /targetpath     Same as 'path', but not positional
@@ -54,6 +55,7 @@ GitVersion [path]
     /execargs       Arguments for the executable specified by /exec
     /proj           Build a msbuild file, GitVersion variables will be passed as msbuild properties
     /projargs       Additional arguments to pass to msbuild
+    /verbosity      Set Verbosity level (debug, info, warn, error, none). Default is info
 
 
 gitversion init     Configuration utility for gitversion

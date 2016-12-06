@@ -33,11 +33,11 @@
         [YamlMember(Alias = "next-version")]
         public string NextVersion
         {
-            get { return this.nextVersion; }
+            get { return nextVersion; }
             set
             {
                 int major;
-                this.nextVersion = int.TryParse(value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out major)
+                nextVersion = int.TryParse(value, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out major)
                     ? string.Format("{0}.0", major)
                     : value;
             }
@@ -79,7 +79,7 @@
                 value.ToList().ForEach(_ =>
                 {
                     if (!branches.ContainsKey(_.Key))
-                        branches.Add(_.Key, new BranchConfig());
+                        branches.Add(_.Key, new BranchConfig {Name = _.Key});
 
                     branches[_.Key] = MergeObjects(branches[_.Key], _.Value);
                 });
@@ -99,5 +99,8 @@
 
         [YamlMember(Alias = "ignore")]
         public IgnoreConfig Ignore { get; set; }
+
+        [YamlMember(Alias = "increment")]
+        public IncrementStrategy? Increment { get; set; }
     }
 }

@@ -8,16 +8,29 @@ namespace GitVersion.VersionCalculation
     using LibGit2Sharp;
 
     /// <summary>
-    /// Inherit version from release branch and tags on master
+    /// Active only when the branch is marked as IsDevelop.
+    /// Two different algorithms (results are merged):
+    /// <para>
+    /// Using <see cref="VersionInBranchNameBaseVersionStrategy"/>:
+    /// Version is that of any child branches marked with IsReleaseBranch (except if they have no commits of their own).
+    /// BaseVersionSource is the commit where the child branch was created.
+    /// Always increments.
+    /// </para>
+    /// <para>
+    /// Using <see cref="TaggedCommitVersionStrategy"/>:
+    /// Version is extracted from all tags on the <c>master</c> branch which are valid.
+    /// BaseVersionSource is the tag's commit (same as base strategy).
+    /// Increments if the tag is not the current commit (same as base strategy).
+    /// </para>
     /// </summary>
-    public class DevelopVersionStrategy : BaseVersionStrategy
+    public class TrackReleaseBranchesVersionStrategy : BaseVersionStrategy
     {
-        VersionInBranchBaseVersionStrategy releaseVersionStrategy = new VersionInBranchBaseVersionStrategy();
+        VersionInBranchNameBaseVersionStrategy releaseVersionStrategy = new VersionInBranchNameBaseVersionStrategy();
         TaggedCommitVersionStrategy taggedCommitVersionStrategy = new TaggedCommitVersionStrategy();
 
         public override IEnumerable<BaseVersion> GetVersions(GitVersionContext context)
         {
-            if (context.Configuration.IsCurrentBranchDevelop)
+            if (context.Configuration.TracksReleaseBranches)
             {
                 return ReleaseBranchBaseVersions(context).Union(MasterTagsVersions(context));
             }
@@ -53,7 +66,8 @@ namespace GitVersion.VersionCalculation
                         // Need to drop branch overrides and give a bit more context about
                         // where this version came from
                         var source1 = "Release branch exists -> " + baseVersion.Source;
-                        return new BaseVersion(source1,
+                        return new BaseVersion(context,
+                            source1,
                             baseVersion.ShouldIncrement,
                             baseVersion.SemanticVersion,
                             baseVersion.BaseVersionSource,
@@ -69,13 +83,17 @@ namespace GitVersion.VersionCalculation
             var tagPrefixRegex = context.Configuration.GitTagPrefix;
             var repository = context.Repository;
 
-            var baseSource = releaseBranch.FindMergeBase(context.CurrentBranch, repository);
+            // Find the commit where the child branch was created.
+            var baseSource = context.RepositoryMetadataProvider.FindMergeBase(releaseBranch, context.CurrentBranch);
             if (baseSource == context.CurrentCommit)
+            {
+                // Ignore the branch if it has no commits.
                 return new BaseVersion[0];
+            }
 
             return releaseVersionStrategy
-                .GetVersions(tagPrefixRegex, releaseBranch, repository)
-                .Select(b => new BaseVersion(b.Source, true, b.SemanticVersion, baseSource, b.BranchNameOverride));
+                .GetVersions(context, tagPrefixRegex, releaseBranch, repository)
+                .Select(b => new BaseVersion(context, b.Source, true, b.SemanticVersion, baseSource, b.BranchNameOverride));
         }
     }
 }

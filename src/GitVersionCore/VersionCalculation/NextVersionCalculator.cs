@@ -21,8 +21,8 @@
                     new ConfigNextVersionBaseVersionStrategy(),
                     new TaggedCommitVersionStrategy(),
                     new MergeMessageBaseVersionStrategy(),
-                    new VersionInBranchBaseVersionStrategy(),
-                    new DevelopVersionStrategy());
+                    new VersionInBranchNameBaseVersionStrategy(),
+                    new TrackReleaseBranchesVersionStrategy());
         }
 
         public SemanticVersion FindVersion(GitVersionContext context)
@@ -258,8 +258,8 @@
 
             int? number = null;
 
-            var lastTag = context.CurrentBranch
-                .GetVersionTagsOnBranch(context.Repository, context.Configuration.GitTagPrefix)
+            var lastTag = context.RepositoryMetadataProvider
+                .GetVersionTagsOnBranch(context.CurrentBranch, context.Configuration.GitTagPrefix)
                 .FirstOrDefault(v => v.PreReleaseTag.Name == tagToUse);
 
             if (lastTag != null &&

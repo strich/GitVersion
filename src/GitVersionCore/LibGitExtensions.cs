@@ -15,186 +15,46 @@ namespace GitVersion
             return commit.Committer.When;
         }
 
-        public static IEnumerable<SemanticVersion> GetVersionTagsOnBranch(this Branch branch, IRepository repository, string tagPrefixRegex)
+        /// <summary>
+        /// Checks if the two branch objects refer to the same branch (have the same friendly name).
+        /// </summary>
+        public static bool IsSameBranch(this Branch branch, Branch otherBranch)
         {
-            var tags = repository.Tags.Select(t => t).ToList();
+            // For each branch, fixup the friendly name if the branch is remote.
+            var otherBranchFriendlyName = otherBranch.IsRemote ?
+                otherBranch.FriendlyName.Substring(otherBranch.FriendlyName.IndexOf("/", StringComparison.Ordinal) + 1) :
+                otherBranch.FriendlyName;
+            var branchFriendlyName = branch.IsRemote ?
+                branch.FriendlyName.Substring(branch.FriendlyName.IndexOf("/", StringComparison.Ordinal) + 1) :
+                branch.FriendlyName;
 
-            return repository.Commits.QueryBy(new CommitFilter
-            {
-                IncludeReachableFrom = branch.Tip
-            })
-            .SelectMany(c => tags.Where(t => c.Sha == t.Target.Sha).SelectMany(t =>
-            {
-                SemanticVersion semver;
-                if (SemanticVersion.TryParse(t.FriendlyName, tagPrefixRegex, out semver))
-                    return new [] { semver };
-                return new SemanticVersion[0];
-            }));
+            return otherBranchFriendlyName == branchFriendlyName;
         }
 
-
-        public static Commit FindCommitBranchWasBranchedFrom([NotNull] this Branch branch, IRepository repository, params Branch[] excludedBranches)
+        /// <summary>
+        /// Exclude the given branches (by value equality according to friendly name).
+        /// </summary>
+        public static IEnumerable<BranchCommit> ExcludingBranches([NotNull] this IEnumerable<BranchCommit> branches, [NotNull] IEnumerable<Branch> branchesToExclude)
         {
-            const string missingTipFormat = "{0} has no tip. Please see http://example.com/docs for information on how to fix this.";
-
-            if (branch == null)
-            {
-                throw new ArgumentNullException("branch");
-            }
-
-            using (Logger.IndentLog("Finding branch source"))
-            {
-                if (branch.Tip == null)
-                {
-                    Logger.WriteWarning(string.Format(missingTipFormat, branch.FriendlyName));
-                    return null;
-                }
-
-                var otherBranches = repository.Branches
-                    .Except(excludedBranches)
-                    .Where(b => IsSameBranch(branch, b))
-                    .ToList();
-                var mergeBases = otherBranches.Select(otherBranch =>
-                {
-                    if (otherBranch.Tip == null)
-                    {
-                        Logger.WriteWarning(string.Format(missingTipFormat, otherBranch.FriendlyName));
-                        return null;
-                    }
-
-                    var findMergeBase = FindMergeBase(branch, otherBranch, repository);
-                    return new
-                    {
-                        mergeBaseCommit = findMergeBase,
-                        branch = otherBranch
-                    };
-                }).Where(b => b.mergeBaseCommit != null).OrderByDescending(b => b.mergeBaseCommit.Committer.When).ToList();
-
-                var firstOrDefault = mergeBases.FirstOrDefault();
-                if (firstOrDefault != null)
-                {
-                    return firstOrDefault.mergeBaseCommit;
-                }
-                return null;
-            }
+            return branches.Where(b => branchesToExclude.All(bte => !IsSameBranch(b.Branch, bte)));
         }
 
-        public static Commit FindMergeBase(this Branch branch, Branch otherBranch, IRepository repository)
+        /// <summary>
+        /// Exclude the given branches (by value equality according to friendly name).
+        /// </summary>
+        public static IEnumerable<Branch> ExcludingBranches([NotNull] this IEnumerable<Branch> branches, [NotNull] IEnumerable<Branch> branchesToExclude)
         {
-            using (Logger.IndentLog(string.Format("Finding merge base between '{0}' and {1}.", branch.FriendlyName, otherBranch.FriendlyName)))
-            {
-                // Otherbranch tip is a forward merge
-                var commitToFindCommonBase = otherBranch.Tip;
-                var commit = branch.Tip;
-                if (otherBranch.Tip.Parents.Contains(commit))
-                {
-                    commitToFindCommonBase = otherBranch.Tip.Parents.First();
-                }
-
-                var findMergeBase = repository.ObjectDatabase.FindMergeBase(commit, commitToFindCommonBase);
-                if (findMergeBase != null)
-                {
-                    Logger.WriteInfo(string.Format("Found merge base of {0}", findMergeBase.Sha));
-                    // We do not want to include merge base commits which got forward merged into the other branch
-                    bool mergeBaseWasFowardMerge;
-                    do
-                    {
-                        // Now make sure that the merge base is not a forward merge
-                        mergeBaseWasFowardMerge = otherBranch.Commits
-                            .SkipWhile(c => c != commitToFindCommonBase)
-                            .TakeWhile(c => c != findMergeBase)
-                            .Any(c => c.Parents.Contains(findMergeBase));
-                        if (mergeBaseWasFowardMerge)
-                        {
-                            var second = commitToFindCommonBase.Parents.First();
-                            var mergeBase = repository.ObjectDatabase.FindMergeBase(commit, second);
-                            if (mergeBase == findMergeBase)
-                            {
-                                break;
-                            }
-                            findMergeBase = mergeBase;
-                            Logger.WriteInfo(string.Format("Merge base was due to a forward merge, next merge base is {0}", findMergeBase));
-                        }
-                    } while (mergeBaseWasFowardMerge);
-                }
-                return findMergeBase;
-            }
+            return branches.Where(b => branchesToExclude.All(bte => !IsSameBranch(b, bte)));
         }
-
-        static bool IsSameBranch(Branch branch, Branch b)
-        {
-            return (b.IsRemote ? 
-                b.FriendlyName.Substring(b.FriendlyName.IndexOf("/", StringComparison.Ordinal) + 1) : 
-                b.FriendlyName) != branch.FriendlyName;
-        }
-
-        public static IEnumerable<Branch> GetBranchesContainingCommit([NotNull] this Commit commit, IRepository repository, IList<Branch> branches, bool onlyTrackedBranches)
-        {
-            if (commit == null)
-            {
-                throw new ArgumentNullException("commit");
-            }
-
-            using (Logger.IndentLog(string.Format("Getting branches containing the commit '{0}'.", commit.Id)))
-            {
-                var directBranchHasBeenFound = false;
-                Logger.WriteInfo("Trying to find direct branches.");
-                // TODO: It looks wasteful looping through the branches twice. Can't these loops be merged somehow? @asbjornu
-                foreach (var branch in branches)
-                {
-                    if (branch.Tip != null && branch.Tip.Sha != commit.Sha || (onlyTrackedBranches && !branch.IsTracking))
-                    {
-                        continue;
-                    }
-
-                    directBranchHasBeenFound = true;
-                    Logger.WriteInfo(string.Format("Direct branch found: '{0}'.", branch.FriendlyName));
-                    yield return branch;
-                }
-
-                if (directBranchHasBeenFound)
-                {
-                    yield break;
-                }
-
-                Logger.WriteInfo(string.Format("No direct branches found, searching through {0} branches.", onlyTrackedBranches ? "tracked" : "all"));
-                foreach (var branch in branches.Where(b => onlyTrackedBranches && !b.IsTracking))
-                {
-                    Logger.WriteInfo(string.Format("Searching for commits reachable from '{0}'.", branch.FriendlyName));
-
-                    var commits = repository.Commits.QueryBy(new CommitFilter
-                    {
-                        IncludeReachableFrom = branch
-                    }).Where(c => c.Sha == commit.Sha);
-
-                    if (!commits.Any())
-                    {
-                        Logger.WriteInfo(string.Format("The branch '{0}' has no matching commits.", branch.FriendlyName));
-                        continue;
-                    }
-
-                    Logger.WriteInfo(string.Format("The branch '{0}' has a matching commit.", branch.FriendlyName));
-                    yield return branch;
-                }
-            }
-        }
-
-        private static Dictionary<string, GitObject> _cachedPeeledTarget = new Dictionary<string, GitObject>();
 
         public static GitObject PeeledTarget(this Tag tag)
         {
-            GitObject cachedTarget;
-            if(_cachedPeeledTarget.TryGetValue(tag.Target.Sha, out cachedTarget))
-            {
-                return cachedTarget;
-            }
             var target = tag.Target;
 
             while (target is TagAnnotation)
             {
                 target = ((TagAnnotation)(target)).Target;
             }
-            _cachedPeeledTarget.Add(tag.Target.Sha, target);
             return target;
         }
 
@@ -248,7 +108,7 @@ namespace GitVersion
                     }
 
                     var fullPath = Path.Combine(repository.GetRepositoryDirectory(), fileName);
-                    using (var stream = ((Blob) treeEntry.Target).GetContentStream())
+                    using (var stream = ((Blob)treeEntry.Target).GetContentStream())
                     {
                         using (var streamReader = new BinaryReader(stream))
                         {
