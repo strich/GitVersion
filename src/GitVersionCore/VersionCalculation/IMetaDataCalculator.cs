@@ -1,6 +1,6 @@
 ﻿namespace GitVersion.VersionCalculation
 {
-    using LibGit2Sharp;
+    //using LibGit2Sharp;
 
     public interface IMetaDataCalculator
     {

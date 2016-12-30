@@ -10,7 +10,7 @@ namespace GitVersion
 
     static class LibGitExtensions
     {
-        public static DateTimeOffset When(this Commit commit)
+        public static DateTimeOffset When(this LibGit2Sharp.Commit commit)
         {
             return commit.Committer.When;
         }
@@ -47,7 +47,7 @@ namespace GitVersion
             return branches.Where(b => branchesToExclude.All(bte => !IsSameBranch(b, bte)));
         }
 
-        public static GitObject PeeledTarget(this Tag tag)
+        public static GitObject PeeledTarget(this LibGit2Sharp.Tag tag)
         {
             var target = tag.Target;
 
@@ -58,17 +58,17 @@ namespace GitVersion
             return target;
         }
 
-        public static IEnumerable<Commit> CommitsPriorToThan(this Branch branch, DateTimeOffset olderThan)
+        public static IEnumerable<LibGit2Sharp.Commit> CommitsPriorToThan(this LibGit2Sharp.Branch branch, DateTimeOffset olderThan)
         {
             return branch.Commits.SkipWhile(c => c.When() > olderThan);
         }
 
-        public static bool IsDetachedHead(this Branch branch)
+        public static bool IsDetachedHead(this LibGit2Sharp.Branch branch)
         {
             return branch.CanonicalName.Equals("(no branch)", StringComparison.OrdinalIgnoreCase);
         }
 
-        public static string GetRepositoryDirectory(this IRepository repository, bool omitGitPostFix = true)
+        public static string GetRepositoryDirectory(this LibGit2Sharp.IRepository repository, bool omitGitPostFix = true)
         {
             var gitDirectory = repository.Info.Path;
 
@@ -83,7 +83,7 @@ namespace GitVersion
             return gitDirectory;
         }
 
-        public static void CheckoutFilesIfExist(this IRepository repository, params string[] fileNames)
+        public static void CheckoutFilesIfExist(this LibGit2Sharp.IRepository repository, params string[] fileNames)
         {
             if (fileNames == null || fileNames.Length == 0)
             {

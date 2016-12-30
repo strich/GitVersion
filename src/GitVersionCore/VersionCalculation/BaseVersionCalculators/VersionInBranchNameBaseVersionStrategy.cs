@@ -2,7 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-    using LibGit2Sharp;
+    //using LibGit2Sharp;
 
     /// <summary>
     /// Version is extracted from the name of the branch.

@@ -4,7 +4,7 @@
     using System.Linq;
     using System.Text.RegularExpressions;
     using VersionCalculation.BaseVersionCalculators;
-    using LibGit2Sharp;
+    //using LibGit2Sharp;
 
     public enum CommitMessageIncrementMode
     {

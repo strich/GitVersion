@@ -2,7 +2,7 @@
 {
     using System.Collections.Generic;
 
-    using LibGit2Sharp;
+    //using LibGit2Sharp;
 
     public abstract class VersioningModeBase
     {

@@ -5,7 +5,7 @@ namespace GitVersion.VersionCalculation
     using System.Text.RegularExpressions;
     using BaseVersionCalculators;
     using GitTools;
-    using LibGit2Sharp;
+    //using LibGit2Sharp;
 
     /// <summary>
     /// Active only when the branch is marked as IsDevelop.

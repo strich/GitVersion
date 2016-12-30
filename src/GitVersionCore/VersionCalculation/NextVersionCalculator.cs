@@ -5,7 +5,7 @@
     using System.Linq;
     using System.Text.RegularExpressions;
     using BaseVersionCalculators;
-    using LibGit2Sharp;
+    //using LibGit2Sharp;
 
     public class NextVersionCalculator
     {

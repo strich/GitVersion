@@ -1,6 +1,6 @@
 ﻿namespace GitVersion.VersionCalculation.BaseVersionCalculators
 {
-    using LibGit2Sharp;
+    //using LibGit2Sharp;
 
     public class BaseVersion
     {

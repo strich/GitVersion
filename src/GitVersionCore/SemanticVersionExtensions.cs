@@ -1,6 +1,6 @@
 ﻿namespace GitVersion
 {
-    using LibGit2Sharp;
+    //using LibGit2Sharp;
 
     public static class SemanticVersionExtensions
     {
