@@ -102,6 +102,7 @@ namespace GitVersion
 	public class Tag
 	{
 		public string Message;
+		public string CanonicalName;
 		public string Name;
 		public Committer Author;
 		public Commit Target;
@@ -109,13 +110,15 @@ namespace GitVersion
 
 		public Tag(LibGit2Sharp.Repository repo, LibGit2Sharp.Tag tag)
 		{
-			Message = tag.Annotation.Message;
-			Name = tag.Annotation.Name;
+			Message = tag.Annotation == null ? "" : tag.Annotation.Message;
+			CanonicalName = tag.CanonicalName;
+			Name = tag.FriendlyName;
+			Author = tag.Annotation == null ? null : new Committer(tag.Annotation.Tagger);
+
 			Target = new Commit(repo.Commits
 				.Where(c => c.Sha == tag.Target.Sha).First());
 			PeeledTarget = new Commit(repo.Commits
 				.Where(c => c.Sha == tag.PeeledTarget.Sha).First());
-			Author = new Committer(tag.Annotation.Tagger);
 		}
 	}
 
@@ -133,7 +136,8 @@ namespace GitVersion
 		public IList<Commit> Commits { get; set; }
 		public bool IsTracking { get; internal set; }
 
-		public bool IsDetachedHead() { throw new NotImplementedException(); }
+		private bool _isDetachedHead;
+		public bool IsDetachedHead() { return _isDetachedHead; }
 
 		public string FriendlyName;
 		public string CanonicalName;
@@ -151,7 +155,9 @@ namespace GitVersion
 			IsTracking = libgitBranch.IsTracking;
 			FriendlyName = libgitBranch.FriendlyName;
 			CanonicalName = libgitBranch.CanonicalName;
-			IsRemote = libgitBranch.IsRemote;			
+			IsRemote = libgitBranch.IsRemote;
+			_isDetachedHead = libgitBranch.CanonicalName.Equals("(no branch)", 
+				StringComparison.OrdinalIgnoreCase);
 		}
 
 		/// <summary>
@@ -170,7 +176,7 @@ namespace GitVersion
 			return otherBranchFriendlyName == branchFriendlyName;
 		}
 	}
-	public class Commit
+	public class Commit : IEquatable<Commit>
 	{
 		public string Sha;
 		public string Message;
@@ -178,6 +184,11 @@ namespace GitVersion
 		public Committer Committer;
 
 		public DateTimeOffset When() { return Committer.Date; }
+
+		public bool Equals(Commit other)
+		{
+			return Sha == other.Sha;
+		}
 
 		public Commit(LibGit2Sharp.Commit libGitCommit)
 		{
