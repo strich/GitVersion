@@ -51,7 +51,7 @@
                 BaseVersion baseVersionWithOldestSource;
                 if (matchingVersionsOnceIncremented.Any())
                 {
-                    baseVersionWithOldestSource = matchingVersionsOnceIncremented.Aggregate((v1, v2) => v1.Version.BaseVersionSource.Committer.When < v2.Version.BaseVersionSource.Committer.When ? v1 : v2).Version;
+                    baseVersionWithOldestSource = matchingVersionsOnceIncremented.Aggregate((v1, v2) => v1.Version.BaseVersionSource.Committer.Date < v2.Version.BaseVersionSource.Committer.Date ? v1 : v2).Version;
                     Logger.WriteInfo(string.Format(
                         "Found multiple base versions which will produce the same SemVer ({0}), taking oldest source for commit counting ({1})",
                         maxVersion.IncrementedVersion,
@@ -62,7 +62,7 @@
                     baseVersionWithOldestSource = baseVersions
                         .Where(v => v.Version.BaseVersionSource != null)
                         .OrderByDescending(v => v.IncrementedVersion)
-                        .ThenByDescending(v => v.Version.BaseVersionSource.Committer.When)
+                        .ThenByDescending(v => v.Version.BaseVersionSource.Committer.Date)
                         .First()
                         .Version;
                 }

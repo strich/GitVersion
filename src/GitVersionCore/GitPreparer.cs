@@ -6,151 +6,64 @@ namespace GitVersion
 	using GitTools.Git;
 	using System.Collections.Generic;
 
-	//using LibGit2Sharp;
+	using LibGit2Sharp;
 
-	public interface IRepository : IDisposable
+	public interface IGitPreparer
 	{
-		IList<Commit> Commits { get; set; }
-		Branch Head { get; set; }
-		ObjectDatabase ObjectDatabase { get; set; }
-		Branch[] Branches { get; set; }
-		IList<Tag> Tags { get; set; }
-		Branch FindBranch(string branchName);
+		string GetWorkingDirectory();
+
+		string GetProjectRootDirectory();
+		string GetDotGitDirectory();
+		void Initialise(bool normaliseGitDirectory, string currentBranch);
+		Repository GetRepository();
 	}
-	public class Repository : IRepository
+
+	public class ApiGitPreparer : IGitPreparer
 	{
-		private string _dotGitDirectory;
-		public Network Network;
-		public Branch[] Branches {
-			get {
-				throw new NotImplementedException();
-			}
+		private string _apiUrl;
 
-			set {
-				throw new NotImplementedException();
-			}
-		}
-
-		public Branch Head {
-			get {
-				throw new NotImplementedException();
-			}
-
-			set {
-				throw new NotImplementedException();
-			}
-		}
-
-		public IList<Commit> Commits {
-			get {
-				throw new NotImplementedException();
-			}
-
-			set {
-				throw new NotImplementedException();
-			}
-		}
-
-		public IList<Tag> Tags {
-			get {
-				throw new NotImplementedException();
-			}
-
-			set {
-				throw new NotImplementedException();
-			}
-		}
-
-		public ObjectDatabase ObjectDatabase {
-			get {
-				throw new NotImplementedException();
-			}
-
-			set {
-				throw new NotImplementedException();
-			}
-		}
-
-		public Repository(string dotGitDirectory)
+		public ApiGitPreparer(string apiUrl)
 		{
-			_dotGitDirectory = dotGitDirectory;
+			_apiUrl = apiUrl;
 		}
 
-		public void Dispose()
+		public string GetWorkingDirectory() {
+			throw new NotImplementedException();
+		}
+
+		public string GetDotGitDirectory()
 		{
 			throw new NotImplementedException();
 		}
 
-		public static string Discover(string targetPath)
+		public string GetProjectRootDirectory()
 		{
 			throw new NotImplementedException();
 		}
 
-		public Branch FindBranch(string branchName)
+		public void Initialise(bool normaliseGitDirectory, string currentBranch)
+		{
+			throw new NotImplementedException();
+		}
+
+		public Repository GetRepository()
 		{
 			throw new NotImplementedException();
 		}
 	}
 
-	public class ObjectDatabase
+	public class LibGitPreparer : IGitPreparer
 	{
-		public Commit FindMergeBase(Commit first, Commit second) { throw new NotImplementedException(); }
-	}
-
-	public class Committer
-	{
-		public DateTimeOffset Date { get; set; }
-		public string Name { get; set; }
-	}
-
-	public class Tag
-	{
-		public string Annotation { get; set; }
-		public bool IsAnnotated { get; set; }
-		public Commit PeeledTarget() { throw new NotImplementedException(); }
-		public Commit Target { get; set; }
-		public string FriendlyName;
-	}
-
-	public class Remote {
-		public string Url;
-	}
-	public class Network
-	{
-		public IList<Remote> Remotes;
-	}
-	public class Branch
-	{
-		public Commit Tip { get; internal set; }
-		public IList<Commit> Commits { get; set; }
-		public bool IsTracking { get; internal set; }
-
-		public string FriendlyName;
-		public string CanonicalName;
-		public bool IsRemote;
-	}
-	public class Commit {
-		public string Sha;
-
-		public string Message;
-
-		public IList<Commit> Parents;
-		public Committer Committer;
-		public DateTimeOffset When() { return Committer.Date; }
-
-		public object Id { get; internal set; }
-	}
-
-	public class GitPreparer
-    {
         string targetUrl;
         string dynamicRepositoryLocation;
         AuthenticationInfo authentication;
         bool noFetch;
         string targetPath;
+		private Repository _repository;
 
-        public GitPreparer(string targetPath) : this(null, null, null, false, targetPath) { }
-        public GitPreparer(string targetUrl, string dynamicRepositoryLocation, Authentication authentication, bool noFetch, string targetPath)
+        public LibGitPreparer(string targetPath) : this(null, null, null, false, targetPath) { }
+        public LibGitPreparer(string targetUrl, string dynamicRepositoryLocation, Authentication authentication, 
+			bool noFetch, string targetPath)
         {
             this.targetUrl = targetUrl;
             this.dynamicRepositoryLocation = dynamicRepositoryLocation;
@@ -165,9 +78,9 @@ namespace GitVersion
             this.targetPath = targetPath.TrimEnd('/', '\\');
         }
 
-        public string WorkingDirectory
-        {
-            get { return targetPath; }
+		public string GetWorkingDirectory()
+		{
+            return targetPath;
         }
 
         public bool IsDynamicGitRepository
@@ -179,27 +92,31 @@ namespace GitVersion
 
         public void Initialise(bool normaliseGitDirectory, string currentBranch)
         {
-            if (string.IsNullOrWhiteSpace(targetUrl))
+			InitializeData();
+
+			if (string.IsNullOrWhiteSpace(targetUrl))
             {
                 if (normaliseGitDirectory)
                 {
-                    GitRepositoryHelper.NormalizeGitDirectory(GetDotGitDirectory(), authentication, noFetch, currentBranch);
-                }
+                    GitRepositoryHelper.NormalizeGitDirectory(GetDotGitDirectory(), authentication, noFetch, 
+						currentBranch);					
+				}
                 return;
             }
 
             var tempRepositoryPath = CalculateTemporaryRepositoryPath(targetUrl, dynamicRepositoryLocation);
 
-            DynamicGitRepositoryPath = CreateDynamicRepository(tempRepositoryPath, authentication, targetUrl, currentBranch, noFetch);
-        }
+            DynamicGitRepositoryPath = CreateDynamicRepository(tempRepositoryPath, authentication, targetUrl, 
+				currentBranch, noFetch);			
+		}
 
-        public TResult WithRepository<TResult>(Func<IRepository, TResult> action)
-        {
-            using (IRepository repo = new Repository(GetDotGitDirectory()))
-            {
-                return action(repo);
-            }
-        }
+		private void InitializeData()
+		{
+			using (var repo = new LibGit2Sharp.Repository(targetPath))
+			{
+				_repository = new Repository(repo);
+			}
+		}
 
         static string CalculateTemporaryRepositoryPath(string targetUrl, string dynamicRepositoryLocation)
         {
@@ -230,10 +147,8 @@ namespace GitVersion
         {
             try
             {
-                using (var repository = new Repository(possiblePath))
-                {
-                    return repository.Network.Remotes.Any(r => r.Url == targetUrl);
-                }
+				var repository = new Repository(possiblePath);                
+                return repository.Network.Remotes.Any(r => r.Url == targetUrl);                
             }
             catch (Exception)
             {
@@ -246,7 +161,7 @@ namespace GitVersion
             if (IsDynamicGitRepository)
                 return DynamicGitRepositoryPath;
 
-            var dotGitDirectory = Repository.Discover(targetPath);
+            var dotGitDirectory = LibGit2Sharp.Repository.Discover(targetPath);
 
             if (String.IsNullOrEmpty(dotGitDirectory))
                 throw new DirectoryNotFoundException("Can't find the .git directory in " + targetPath);
@@ -300,12 +215,12 @@ namespace GitVersion
 
         static void CloneRepository(string repositoryUrl, string gitDirectory, AuthenticationInfo authentication)
         {
-			LibGit2Sharp.Credentials credentials = null;
+			Credentials credentials = null;
             if (!string.IsNullOrWhiteSpace(authentication.Username) && !string.IsNullOrWhiteSpace(authentication.Password))
             {
                 Logger.WriteInfo(string.Format("Setting up credentials using name '{0}'", authentication.Username));
 
-                credentials = new LibGit2Sharp.UsernamePasswordCredentials
+                credentials = new UsernamePasswordCredentials
 				{
                     Username = authentication.Username,
                     Password = authentication.Password
@@ -316,7 +231,7 @@ namespace GitVersion
 
             try
             {
-                var cloneOptions = new LibGit2Sharp.CloneOptions
+                var cloneOptions = new CloneOptions
 				{
                     Checkout = false,
                     CredentialsProvider = (url, usernameFromUrl, types) => credentials
@@ -324,7 +239,7 @@ namespace GitVersion
                 var returnedPath = LibGit2Sharp.Repository.Clone(repositoryUrl, gitDirectory, cloneOptions);
                 Logger.WriteInfo(string.Format("Returned path after repository clone: {0}", returnedPath));
             }
-            catch (LibGit2Sharp.LibGit2SharpException ex)
+            catch (LibGit2SharpException ex)
             {
                 var message = ex.Message;
                 if (message.Contains("401"))
@@ -343,5 +258,10 @@ namespace GitVersion
                 throw new Exception("There was an unknown problem with the Git repository you provided", ex);
             }
         }
-    }
+
+		public Repository GetRepository()
+		{
+			return _repository;
+		}
+	}
 }

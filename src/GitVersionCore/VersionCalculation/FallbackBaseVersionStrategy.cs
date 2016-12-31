@@ -14,11 +14,14 @@
     {
         public override IEnumerable<BaseVersion> GetVersions(GitVersionContext context)
         {
-            var baseVersionSource = context.Repository.Commits.QueryBy(new LibGit2Sharp.CommitFilter
-			{
-                IncludeReachableFrom = context.CurrentBranch.Tip
-            }).First(c => !c.Parents.Any());
-            yield return new BaseVersion(context, "Fallback base version", false, new SemanticVersion(minor: 1), baseVersionSource, null);
+			//var baseVersionSource = context.Repository.Commits.QueryBy(new LibGit2Sharp.CommitFilter
+			//{
+			//	IncludeReachableFrom = context.CurrentBranch.Tip
+			//}).First(c => !c.Parents.Any());
+			// TODO
+			var baseVersionSource = context.Repository.Commits.First();
+
+			yield return new BaseVersion(context, "Fallback base version", false, new SemanticVersion(minor: 1), baseVersionSource, null);
         }
     }
 }

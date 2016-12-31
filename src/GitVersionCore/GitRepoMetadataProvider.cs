@@ -34,19 +34,28 @@ namespace GitVersion
             {
                 var tags = this.Repository.Tags.Select(t => t).ToList();
 
-                var versionTags = this.Repository.Commits.QueryBy(new CommitFilter
-                {
-                    IncludeReachableFrom = branch.Tip
-                })
-                .SelectMany(c => tags.Where(t => c.Sha == t.Target.Sha).SelectMany(t =>
-                {
-                    SemanticVersion semver;
-                    if (SemanticVersion.TryParse(t.FriendlyName, tagPrefixRegex, out semver))
-                        return new[] { semver };
-                    return new SemanticVersion[0];
-                })).ToList();
+				//var versionTags = this.Repository.Commits.QueryBy(new CommitFilter
+				//{
+				//    IncludeReachableFrom = branch.Tip
+				//})
+				//.SelectMany(c => tags.Where(t => c.Sha == t.Target.Sha).SelectMany(t =>
+				//{
+				//    SemanticVersion semver;
+				//    if (SemanticVersion.TryParse(t.FriendlyName, tagPrefixRegex, out semver))
+				//        return new[] { semver };
+				//    return new SemanticVersion[0];
+				//})).ToList();
+				// TODO
+				var versionTags = this.Repository.Tags.SelectMany(t =>
+				{
+					SemanticVersion semver;
+					if (SemanticVersion.TryParse(t.Name, tagPrefixRegex, out semver))
+						return new[] { semver };
+					return new SemanticVersion[0];
+				}).ToList();
 
-                semanticVersionTagsOnBranchCache.Add(branch, versionTags);
+
+				semanticVersionTagsOnBranchCache.Add(branch, versionTags);
                 return versionTags;
             }
         }
@@ -59,7 +68,7 @@ namespace GitVersion
                 throw new ArgumentNullException("commit");
             }
 
-            using (Logger.IndentLog(string.Format("Getting branches containing the commit '{0}'.", commit.Id)))
+            using (Logger.IndentLog(string.Format("Getting branches containing the commit '{0}'.", commit.Sha)))
             {
                 var directBranchHasBeenFound = false;
                 Logger.WriteInfo("Trying to find direct branches.");
@@ -86,12 +95,14 @@ namespace GitVersion
                 {
                     Logger.WriteInfo(string.Format("Searching for commits reachable from '{0}'.", branch.FriendlyName));
 
-                    var commits = this.Repository.Commits.QueryBy(new CommitFilter
-                    {
-                        IncludeReachableFrom = branch
-                    }).Where(c => c.Sha == commit.Sha);
+					//var commits = this.Repository.Commits.QueryBy(new CommitFilter
+					//{
+					//    IncludeReachableFrom = branch
+					//}).Where(c => c.Sha == commit.Sha);
+					// TODO
+					var commits = this.Repository.Commits;
 
-                    if (!commits.Any())
+					if (!commits.Any())
                     {
                         Logger.WriteInfo(string.Format("The branch '{0}' has no matching commits.", branch.FriendlyName));
                         continue;
@@ -205,7 +216,7 @@ namespace GitVersion
 
                 var findMergeBase = FindMergeBase(branch, otherBranch);
                 return new BranchCommit(findMergeBase, otherBranch);
-            }).Where(b => b.Commit != null).OrderByDescending(b => b.Commit.Committer.When).ToList();
+            }).Where(b => b.Commit != null).OrderByDescending(b => b.Commit.Committer.Date).ToList();
             mergeBaseCommitsCache.Add(branch, branchMergeBases);
 
             return branchMergeBases;

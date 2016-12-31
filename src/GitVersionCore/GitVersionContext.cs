@@ -4,11 +4,13 @@
     using System;
     using System.Linq;
 
+	public interface IGitVersionContext { }
+
     /// <summary>
     /// Contextual information about where GitVersion is being run
     /// </summary>
-    public class GitVersionContext
-    {
+    public class GitVersionContext : IGitVersionContext
+	{
         public GitVersionContext(IRepository repository, Config configuration, bool isForTrackingBranchOnly = true, string commitId = null)
             : this(repository, repository.Head, configuration, isForTrackingBranchOnly, commitId)
         {
@@ -60,7 +62,7 @@
                 .SelectMany(t =>
                 {
                     SemanticVersion version;
-                    if (t.PeeledTarget() == CurrentCommit && SemanticVersion.TryParse(t.FriendlyName, Configuration.GitTagPrefix, out version))
+                    if (t.PeeledTarget == CurrentCommit && SemanticVersion.TryParse(t.Name, Configuration.GitTagPrefix, out version))
                         return new[] { version };
                     return new SemanticVersion[0];
                 })

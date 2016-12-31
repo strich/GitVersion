@@ -20,7 +20,7 @@
         public IEnumerable<BaseVersion> GetTaggedVersions(GitVersionContext context, Branch currentBranch, DateTimeOffset? olderThan)
         {
             var allTags = context.Repository.Tags
-                .Where(tag => !olderThan.HasValue || ((Commit) tag.PeeledTarget()).When() <= olderThan.Value)
+                .Where(tag => !olderThan.HasValue || ((Commit) tag.PeeledTarget).When() <= olderThan.Value)
                 .ToList();
             var tagsOnBranch = currentBranch
                 .Commits
@@ -28,11 +28,11 @@
                 .Select(t =>
                 {
                     SemanticVersion version;
-                    if (SemanticVersion.TryParse(t.FriendlyName, context.Configuration.GitTagPrefix, out version))
+                    if (SemanticVersion.TryParse(t.Name, context.Configuration.GitTagPrefix, out version))
                     {
-                        var commit = t.PeeledTarget() as Commit;
+                        var commit = t.PeeledTarget as Commit;
                         if (commit != null)
-                            return new VersionTaggedCommit(commit, version, t.FriendlyName);
+                            return new VersionTaggedCommit(commit, version, t.Name);
                     }
                     return null;
                 })
@@ -56,7 +56,7 @@
 
         protected virtual bool IsValidTag(Tag tag, Commit commit)
         {
-            return tag.PeeledTarget() == commit;
+            return tag.PeeledTarget == commit;
         }
 
         protected class VersionTaggedCommit

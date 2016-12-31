@@ -92,16 +92,18 @@
 
             if (intermediateCommitCache == null || intermediateCommitCache.LastOrDefault() != headCommit)
             {
-                var filter = new CommitFilter
-                {
-                    IncludeReachableFrom = headCommit,
-                    SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Reverse
-                };
+				//var filter = new CommitFilter
+				//{
+				//    IncludeReachableFrom = headCommit,
+				//    SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Reverse
+				//};
+				//intermediateCommitCache = repo.Commits.QueryBy(filter).ToList();
+				// TODO
 
-                intermediateCommitCache = repo.Commits.QueryBy(filter).ToList();
-            }
+				intermediateCommitCache = repo.Commits.ToList();
+			}
 
-            var found = false;
+			var found = false;
             foreach (var commit in intermediateCommitCache)
             {
                 if (found)

@@ -19,14 +19,26 @@ namespace GitVersion
             gitVersionCache = new GitVersionCache(fileSystem);
         }
 
-        public VersionVariables ExecuteGitVersion(string targetUrl, string dynamicRepositoryLocation, Authentication authentication, string targetBranch, bool noFetch, string workingDirectory, string commitId, Config overrideConfig = null, bool noCache = false)
+        public VersionVariables ExecuteGitVersion(string targetUrl, string dynamicRepositoryLocation, 
+			Authentication authentication, string targetBranch, bool noFetch, string workingDirectory, 
+			string commitId, string apiUrl, Config overrideConfig = null, bool noCache = false)
         {
             // Normalise if we are running on build server
             var applicableBuildServers = BuildServerList.GetApplicableBuildServers();
             var buildServer = applicableBuildServers.FirstOrDefault();
             var fetch = noFetch || (buildServer != null && buildServer.PreventFetch());
-            var gitPreparer = new GitPreparer(targetUrl, dynamicRepositoryLocation, authentication, fetch, workingDirectory);
-            gitPreparer.Initialise(buildServer != null, ResolveCurrentBranch(buildServer, targetBranch, !string.IsNullOrWhiteSpace(dynamicRepositoryLocation)));
+			IGitPreparer gitPreparer;
+			if (string.IsNullOrEmpty(apiUrl))
+			{
+				gitPreparer = new LibGitPreparer(targetUrl, dynamicRepositoryLocation, authentication,
+					fetch, workingDirectory);
+			} else
+			{
+				gitPreparer = new ApiGitPreparer(apiUrl);
+			}
+            gitPreparer.Initialise(buildServer != null, ResolveCurrentBranch(buildServer, targetBranch, 
+				!string.IsNullOrWhiteSpace(dynamicRepositoryLocation)));
+
             var dotGitDirectory = gitPreparer.GetDotGitDirectory();
             var projectRoot = gitPreparer.GetProjectRootDirectory();
 
@@ -76,7 +88,7 @@ namespace GitVersion
         {
             try
             {
-                versionVariables = ExecuteGitVersion(null, null, authentication, null, noFetch, directory, null);
+                versionVariables = ExecuteGitVersion(null, null, authentication, null, noFetch, directory, null, null);
                 return true;
             }
             catch (Exception ex)
@@ -100,18 +112,18 @@ namespace GitVersion
             return currentBranch;
         }
 
-        VersionVariables ExecuteInternal(string targetBranch, string commitId, GitPreparer gitPreparer, IBuildServer buildServer, Config overrideConfig = null)
+        VersionVariables ExecuteInternal(string targetBranch, string commitId, IGitPreparer gitPreparer, IBuildServer buildServer, Config overrideConfig = null)
         {
             var versionFinder = new GitVersionFinder();
             var configuration = ConfigurationProvider.Provide(gitPreparer, fileSystem, overrideConfig: overrideConfig);
 
-            return gitPreparer.WithRepository(repo =>
-            {
-                var gitVersionContext = new GitVersionContext(repo, configuration, commitId: commitId);
-                var semanticVersion = versionFinder.FindVersion(gitVersionContext);
+			var repo = gitPreparer.GetRepository();
+			
+            var gitVersionContext = new GitVersionContext(repo, configuration, commitId: commitId);
+            var semanticVersion = versionFinder.FindVersion(gitVersionContext);
 
-                return VariableProvider.GetVariablesFor(semanticVersion, gitVersionContext.Configuration, gitVersionContext.IsCurrentCommitTagged);
-            });
+            return VariableProvider.GetVariablesFor(semanticVersion, gitVersionContext.Configuration, 
+				gitVersionContext.IsCurrentCommitTagged);
         }
 
         IRepository GetRepository(string gitDirectory)

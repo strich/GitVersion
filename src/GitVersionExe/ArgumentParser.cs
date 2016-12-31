@@ -86,7 +86,14 @@ namespace GitVersion
                     continue;
                 }
 
-                if (name.IsSwitch("url"))
+				if (name.IsSwitch("apiurl"))
+				{
+					EnsureArgumentValueCount(values);
+					arguments.ApiUrl = value;
+					continue;
+				}
+
+				if (name.IsSwitch("url"))
                 {
                     EnsureArgumentValueCount(values);
                     arguments.TargetUrl = value;

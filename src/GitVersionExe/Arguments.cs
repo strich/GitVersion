@@ -18,6 +18,8 @@ namespace GitVersion
         public Config OverrideConfig;
         public bool HasOverrideConfig { get; set; }
 
+		public string ApiUrl;
+
         public string TargetPath;
 
         public string TargetUrl;

@@ -10,7 +10,7 @@
 
     class GitVersionCacheKeyFactory
     {
-        public static GitVersionCacheKey Create(IFileSystem fileSystem, GitPreparer gitPreparer, Config overrideConfig)
+        public static GitVersionCacheKey Create(IFileSystem fileSystem, IGitPreparer gitPreparer, Config overrideConfig)
         {
             var gitSystemHash = GetGitSystemHash(gitPreparer);
             var configFileHash = GetConfigFileHash(fileSystem, gitPreparer);
@@ -21,7 +21,7 @@
             return new GitVersionCacheKey(compositeHash);
         }
 
-        static string GetGitSystemHash(GitPreparer gitPreparer)
+        static string GetGitSystemHash(IGitPreparer gitPreparer)
         {
             var dotGitDirectory = gitPreparer.GetDotGitDirectory();
 
@@ -121,17 +121,18 @@
             return result;
         }
 
-        private static string GetRepositorySnapshotHash(GitPreparer gitPreparer)
+        private static string GetRepositorySnapshotHash(IGitPreparer gitPreparer)
         {
-            var repositorySnapshot = gitPreparer.WithRepository(repo => {
-                var head = repo.Head;
-                if (head.Tip == null)
-                {
-                    return head.CanonicalName;
-                }
-                var hash = string.Join(":", head.CanonicalName, head.Tip.Sha);
-                return hash;
-            });
+			var repo = new LibGit2Sharp.Repository(gitPreparer.GetDotGitDirectory());
+			
+            var head = repo.Head;
+            if (head.Tip == null)
+            {
+                return head.CanonicalName;
+            }
+            var hash = string.Join(":", head.CanonicalName, head.Tip.Sha);
+			var repositorySnapshot = hash;
+            
             return GetHash(repositorySnapshot);
         }
 
@@ -155,7 +156,7 @@
             return GetHash(configContent);
         }
 
-        private static string GetConfigFileHash(IFileSystem fileSystem, GitPreparer gitPreparer)
+        private static string GetConfigFileHash(IFileSystem fileSystem, IGitPreparer gitPreparer)
         {
             // will return the same hash even when config file will be moved 
             // from workingDirectory to rootProjectDirectory. It's OK. Config essentially is the same.

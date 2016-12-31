@@ -90,20 +90,24 @@
             {
                 var mainlineVersion = baseVersion.SemanticVersion;
 
-                // Forward merge / PR
-                //          * feature/foo
-                //         / |
-                // master *  *
-                // 
-                var commitLog = context.Repository.Commits.QueryBy(new CommitFilter
-                {
-                    IncludeReachableFrom = context.CurrentBranch,
-                    ExcludeReachableFrom = baseVersion.BaseVersionSource,
-                    SortBy = CommitSortStrategies.Reverse,
-                    FirstParentOnly = true
-                }).Where(c => c.Sha != baseVersion.BaseVersionSource.Sha).ToList();
+				// Forward merge / PR
+				//          * feature/foo
+				//         / |
+				// master *  *
+				// 
 
-                var directCommits = new List<Commit>();
+				//var commitLog = context.Repository.Commits.QueryBy(new CommitFilter
+				//{
+				//    IncludeReachableFrom = context.CurrentBranch,
+				//    ExcludeReachableFrom = baseVersion.BaseVersionSource,
+				//    SortBy = CommitSortStrategies.Reverse,
+				//    FirstParentOnly = true
+				//}).Where(c => c.Sha != baseVersion.BaseVersionSource.Sha).ToList();
+				// **************************************
+				// TODO 
+				var commitLog = context.Repository.Commits;
+
+				var directCommits = new List<Commit>();
 
                 // Scans commit log in reverse, aggregating merge commits
                 foreach (var commit in commitLog)
@@ -232,16 +236,20 @@
         private static VersionField FindMessageIncrement(
             GitVersionContext context, Commit mergeCommit, Commit mergedHead, Commit findMergeBase, List<Commit> commitLog)
         {
-            var filter = new CommitFilter
-            {
-                IncludeReachableFrom = mergedHead,
-                ExcludeReachableFrom = findMergeBase
-            };
-            var commits = mergeCommit == null ?
-                context.Repository.Commits.QueryBy(filter).ToList() :
-                new[] { mergeCommit }.Union(context.Repository.Commits.QueryBy(filter)).ToList();
-            commitLog.RemoveAll(c => commits.Any(c1 => c1.Sha == c.Sha));
-            return IncrementStrategyFinder.GetIncrementForCommits(context, commits) ?? VersionField.Patch;
+			//var filter = new CommitFilter
+			//{
+			//    IncludeReachableFrom = mergedHead,
+			//    ExcludeReachableFrom = findMergeBase
+			//};
+			//var commits = mergeCommit == null ?
+			//    context.Repository.Commits.QueryBy(filter).ToList() :
+			//    new[] { mergeCommit }.Union(context.Repository.Commits.QueryBy(filter)).ToList();
+			//commitLog.RemoveAll(c => commits.Any(c1 => c1.Sha == c.Sha));
+			// **************************************
+			// TODO 
+			var commits = new[] { mergeCommit };
+
+			return IncrementStrategyFinder.GetIncrementForCommits(context, commits) ?? VersionField.Patch;
         }
 
         private Commit GetMergedHead(Commit mergeCommit)

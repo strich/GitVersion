@@ -25,9 +25,12 @@ namespace GitVersion
             var commitId = arguments.CommitId;
             var overrideConfig = arguments.HasOverrideConfig ? arguments.OverrideConfig : null;
             var noCache = arguments.NoCache;
+            var apiUrl = arguments.ApiUrl;
 
             var executeCore = new ExecuteCore(fileSystem);
-            var variables = executeCore.ExecuteGitVersion(targetUrl, dynamicRepositoryLocation, authentication, targetBranch, noFetch, targetPath, commitId, overrideConfig, noCache);
+            var variables = executeCore.ExecuteGitVersion(targetUrl, dynamicRepositoryLocation, 
+				authentication, targetBranch, noFetch, targetPath, commitId, apiUrl, overrideConfig, 
+				noCache);
 
             if (arguments.Output == OutputType.BuildServer)
             {

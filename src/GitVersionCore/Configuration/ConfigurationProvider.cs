@@ -31,9 +31,9 @@ namespace GitVersion
 
         private const IncrementStrategy DefaultIncrementStrategy = IncrementStrategy.Inherit;
 
-        public static Config Provide(GitPreparer gitPreparer, IFileSystem fileSystem, bool applyDefaults = true, Config overrideConfig = null)
+        public static Config Provide(IGitPreparer gitPreparer, IFileSystem fileSystem, bool applyDefaults = true, Config overrideConfig = null)
         {
-            var workingDirectory = gitPreparer.WorkingDirectory;
+            var workingDirectory = gitPreparer.GetWorkingDirectory();
             var projectRootDirectory = gitPreparer.GetProjectRootDirectory();
 
             if (HasConfigFileAt(workingDirectory, fileSystem))
@@ -44,9 +44,9 @@ namespace GitVersion
             return Provide(projectRootDirectory, fileSystem, applyDefaults, overrideConfig);
         }
 
-        public static string SelectConfigFilePath(GitPreparer gitPreparer, IFileSystem fileSystem)
+        public static string SelectConfigFilePath(IGitPreparer gitPreparer, IFileSystem fileSystem)
         {
-            var workingDirectory = gitPreparer.WorkingDirectory;
+            var workingDirectory = gitPreparer.GetWorkingDirectory();
             var projectRootDirectory = gitPreparer.GetProjectRootDirectory();
 
             if (HasConfigFileAt(workingDirectory, fileSystem))
@@ -227,9 +227,9 @@ If the docs do not help you decide on the mode open an issue to discuss what you
             return stringBuilder.ToString();
         }
 
-        public static void Verify(GitPreparer gitPreparer, IFileSystem fileSystem)
+        public static void Verify(IGitPreparer gitPreparer, IFileSystem fileSystem)
         {
-            var workingDirectory = gitPreparer.WorkingDirectory;
+            var workingDirectory = gitPreparer.GetWorkingDirectory();
             var projectRootDirectory = gitPreparer.GetProjectRootDirectory();
 
             Verify(workingDirectory, projectRootDirectory, fileSystem);
