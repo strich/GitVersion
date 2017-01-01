@@ -8,6 +8,8 @@ namespace GitVersion
 
 	using LibGit2Sharp;
 
+	using Octokit;
+
 	public interface IGitPreparer
 	{
 		string GetWorkingDirectory();
@@ -21,10 +23,23 @@ namespace GitVersion
 	public class ApiGitPreparer : IGitPreparer
 	{
 		private string _apiUrl;
+		private GitHubClient _githubClient;
 
 		public ApiGitPreparer(string apiUrl)
 		{
 			_apiUrl = apiUrl;
+		}
+
+		private void Initialize()
+		{
+			if (_isInitialized) return;
+			if (string.IsNullOrEmpty(user.GitHubOAuthToken)) throw new AuthorizationException();
+
+			var gitCredentials = new Credentials(user.GitHubOAuthToken);
+
+			client.Credentials = gitCredentials;
+
+			_isInitialized = true;
 		}
 
 		public string GetWorkingDirectory() {
