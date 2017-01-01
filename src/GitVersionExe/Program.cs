@@ -139,6 +139,7 @@ namespace GitVersion
         {
             var gitPreparer = new LibGitPreparer(arguments.TargetUrl, arguments.DynamicRepositoryLocation, 
 				arguments.Authentication, arguments.NoFetch, arguments.TargetPath);
+			gitPreparer.Initialise(false, arguments.TargetBranch);
             ConfigurationProvider.Verify(gitPreparer, fileSystem);
         }
 

@@ -104,8 +104,11 @@
 				//    FirstParentOnly = true
 				//}).Where(c => c.Sha != baseVersion.BaseVersionSource.Sha).ToList();
 				// **************************************
-				// TODO 
-				var commitLog = context.Repository.Commits;
+				// TODO - NEEDS VERIFICATION:
+				var commitLog = context.CurrentBranch.Commits
+					.Reverse()
+					.Where(c => c.Sha != baseVersion.BaseVersionSource.Sha)
+					.ToList();
 
 				var directCommits = new List<Commit>();
 
@@ -233,8 +236,8 @@
             return mainlineVersion;
         }
 
-        private static VersionField FindMessageIncrement(
-            GitVersionContext context, Commit mergeCommit, Commit mergedHead, Commit findMergeBase, List<Commit> commitLog)
+        private static VersionField FindMessageIncrement(GitVersionContext context, Commit mergeCommit, 
+			Commit mergedHead, Commit findMergeBase, List<Commit> commitLog)
         {
 			//var filter = new CommitFilter
 			//{
@@ -247,7 +250,10 @@
 			//commitLog.RemoveAll(c => commits.Any(c1 => c1.Sha == c.Sha));
 			// **************************************
 			// TODO 
-			var commits = new[] { mergeCommit };
+			var commits = mergeCommit == null ?
+				context.Repository.Commits.ToList() :
+				new[] { mergeCommit }.Union(context.Repository.Commits).ToList();
+			commitLog.RemoveAll(c => commits.Any(c1 => c1 == c));
 
 			return IncrementStrategyFinder.GetIncrementForCommits(context, commits) ?? VersionField.Patch;
         }

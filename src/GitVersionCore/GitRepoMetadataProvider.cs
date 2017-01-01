@@ -45,14 +45,17 @@ namespace GitVersion
 				//        return new[] { semver };
 				//    return new SemanticVersion[0];
 				//})).ToList();
-				// TODO
-				var versionTags = this.Repository.Tags.SelectMany(t =>
-				{
-					SemanticVersion semver;
-					if (SemanticVersion.TryParse(t.Name, tagPrefixRegex, out semver))
-						return new[] { semver };
-					return new SemanticVersion[0];
-				}).ToList();
+				// TODO - NEEDS VERIFICATION:
+				var versionTags = branch.Commits
+					.SelectMany(c => tags.Where(t => c.Sha == t.Target.Sha)
+						.SelectMany(t =>
+						{
+							SemanticVersion semver;
+							if (SemanticVersion.TryParse(t.Name, tagPrefixRegex, out semver))
+								return new[] { semver };
+							return new SemanticVersion[0];
+						}))
+					.ToList();
 
 
 				semanticVersionTagsOnBranchCache.Add(branch, versionTags);
@@ -99,8 +102,8 @@ namespace GitVersion
 					//{
 					//    IncludeReachableFrom = branch
 					//}).Where(c => c.Sha == commit.Sha);
-					// TODO
-					var commits = this.Repository.Commits;
+					// TODO - REQUIRES VERIFICATION:
+					var commits = branch.Commits.Where(c => c.Sha == commit.Sha);
 
 					if (!commits.Any())
                     {

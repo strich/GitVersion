@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 
 namespace GitVersion
@@ -130,11 +131,28 @@ namespace GitVersion
 	{
 		public IList<Remote> Remotes;
 	}
+
+	public static class CommitLogExt
+	{		 
+		public static IEnumerable<Commit> ReachableFrom(this IEnumerable<Commit> commits, Commit commit)
+		{
+			var reachableParents = new List<Commit>();
+			reachableParents.Add(commit);
+
+			foreach (var parent in commit.Parents)
+			{
+				reachableParents.AddRange(parent.Parents.ReachableFrom(parent));
+			}
+
+			return reachableParents;
+		}
+	}
+
 	public class Branch
 	{
 		public Commit Tip { get; internal set; }
 		public IList<Commit> Commits { get; set; }
-		public bool IsTracking { get; internal set; }
+		public bool IsTracking { get; set; }
 
 		private bool _isDetachedHead;
 		public bool IsDetachedHead() { return _isDetachedHead; }
@@ -198,5 +216,171 @@ namespace GitVersion
 			Committer = new Committer(libGitCommit.Committer);
 		}
 		
+	}
+
+	public static class TopologicalSort
+	{
+		private static Func<T, IEnumerable<T>> RemapDependencies<T, TKey>(IEnumerable<T> source, Func<T, IEnumerable<TKey>> getDependencies, Func<T, TKey> getKey)
+		{
+			var map = source.ToDictionary(getKey);
+			return item =>
+			{
+				var dependencies = getDependencies(item);
+				return dependencies != null
+					? dependencies.Select(key => map[key])
+					: null;
+			};
+		}
+
+		public static IList<T> Sort<T, TKey>(IEnumerable<T> source, Func<T, IEnumerable<TKey>> getDependencies, Func<T, TKey> getKey, bool ignoreCycles = false)
+		{
+			ICollection<T> source2 = (source as ICollection<T>) ?? source.ToArray();
+			return Sort<T>(source2, RemapDependencies(source2, getDependencies, getKey), null, ignoreCycles);
+		}
+
+		public static IList<T> Sort<T, TKey>(IEnumerable<T> source, Func<T, IEnumerable<T>> getDependencies, Func<T, TKey> getKey, bool ignoreCycles = false)
+		{
+			return Sort<T>(source, getDependencies, new GenericEqualityComparer<T, TKey>(getKey), ignoreCycles);
+		}
+
+		public static IList<T> Sort<T>(IEnumerable<T> source, Func<T, IEnumerable<T>> getDependencies, IEqualityComparer<T> comparer = null, bool ignoreCycles = false)
+		{
+			var sorted = new List<T>();
+			var visited = new Dictionary<T, bool>(comparer);
+
+			foreach (var item in source)
+			{
+				Visit(item, getDependencies, sorted, visited, ignoreCycles);
+			}
+
+			return sorted;
+		}
+
+		public static void Visit<T>(T item, Func<T, IEnumerable<T>> getDependencies, List<T> sorted, Dictionary<T, bool> visited, bool ignoreCycles)
+		{
+			bool inProcess;
+			var alreadyVisited = visited.TryGetValue(item, out inProcess);
+
+			if (alreadyVisited)
+			{
+				if (inProcess && !ignoreCycles)
+				{
+					throw new ArgumentException("Cyclic dependency found.");
+				}
+			}
+			else
+			{
+				visited[item] = true;
+
+				var dependencies = getDependencies(item);
+				if (dependencies != null)
+				{
+					foreach (var dependency in dependencies)
+					{
+						Visit(dependency, getDependencies, sorted, visited, ignoreCycles);
+					}
+				}
+
+				visited[item] = false;
+				sorted.Add(item);
+			}
+		}
+
+		public static IList<ICollection<T>> Group<T, TKey>(IEnumerable<T> source, Func<T, IEnumerable<TKey>> getDependencies, Func<T, TKey> getKey, bool ignoreCycles = true)
+		{
+			ICollection<T> source2 = (source as ICollection<T>) ?? source.ToArray();
+			return Group<T>(source2, RemapDependencies(source2, getDependencies, getKey), null, ignoreCycles);
+		}
+
+		public static IList<ICollection<T>> Group<T, TKey>(IEnumerable<T> source, Func<T, IEnumerable<T>> getDependencies, Func<T, TKey> getKey, bool ignoreCycles = true)
+		{
+			return Group<T>(source, getDependencies, new GenericEqualityComparer<T, TKey>(getKey), ignoreCycles);
+		}
+
+		public static IList<ICollection<T>> Group<T>(IEnumerable<T> source, Func<T, IEnumerable<T>> getDependencies, IEqualityComparer<T> comparer = null, bool ignoreCycles = true)
+		{
+			var sorted = new List<ICollection<T>>();
+			var visited = new Dictionary<T, int>(comparer);
+
+			foreach (var item in source)
+			{
+				Visit(item, getDependencies, sorted, visited, ignoreCycles);
+			}
+
+			return sorted;
+		}
+
+		public static int Visit<T>(T item, Func<T, IEnumerable<T>> getDependencies, List<ICollection<T>> sorted, Dictionary<T, int> visited, bool ignoreCycles)
+		{
+			const int inProcess = -1;
+			int level;
+			var alreadyVisited = visited.TryGetValue(item, out level);
+
+			if (alreadyVisited)
+			{
+				if (level == inProcess && ignoreCycles)
+				{
+					throw new ArgumentException("Cyclic dependency found.");
+				}
+			}
+			else
+			{
+				visited[item] = (level = inProcess);
+
+				var dependencies = getDependencies(item);
+				if (dependencies != null)
+				{
+					foreach (var dependency in dependencies)
+					{
+						var depLevel = Visit(dependency, getDependencies, sorted, visited, ignoreCycles);
+						level = Math.Max(level, depLevel);
+					}
+				}
+
+				visited[item] = ++level;
+				while (sorted.Count <= level)
+				{
+					sorted.Add(new Collection<T>());
+				}
+				sorted[level].Add(item);
+			}
+
+			return level;
+		}
+
+	}
+
+	public class GenericEqualityComparer<TItem, TKey> : EqualityComparer<TItem>
+	{
+		private readonly Func<TItem, TKey> getKey;
+		private readonly EqualityComparer<TKey> keyComparer;
+
+		public GenericEqualityComparer(Func<TItem, TKey> getKey)
+		{
+			this.getKey = getKey;
+			keyComparer = EqualityComparer<TKey>.Default;
+		}
+
+		public override bool Equals(TItem x, TItem y)
+		{
+			if (x == null && y == null)
+			{
+				return true;
+			}
+			if (x == null || y == null)
+			{
+				return false;
+			}
+			return keyComparer.Equals(getKey(x), getKey(y));
+		}
+
+		public override int GetHashCode(TItem obj)
+		{
+			if (obj == null)
+			{
+				return 0;
+			}
+			return keyComparer.GetHashCode(getKey(obj));
+		}
 	}
 }
