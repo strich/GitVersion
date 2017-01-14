@@ -34,34 +34,36 @@ namespace GitVersion
 					fetch, workingDirectory);
 			} else
 			{
-				gitPreparer = new ApiGitPreparer(apiUrl);
+				gitPreparer = new GitHubPreparer(apiUrl);
 			}
             gitPreparer.Initialise(buildServer != null, ResolveCurrentBranch(buildServer, targetBranch, 
 				!string.IsNullOrWhiteSpace(dynamicRepositoryLocation)));
 
-            var dotGitDirectory = gitPreparer.GetDotGitDirectory();
-            var projectRoot = gitPreparer.GetProjectRootDirectory();
+			if (!gitPreparer.IsAPIService())
+			{
+				var dotGitDirectory = gitPreparer.GetDotGitDirectory();
+				var projectRoot = gitPreparer.GetProjectRootDirectory();
 
-            // TODO Can't use this, it still needs work
-            //var gitRepository = GitRepositoryFactory.CreateRepository(new RepositoryInfo
-            //{
-            //    Url = targetUrl,
-            //    Branch = targetBranch,
-            //    Authentication = new AuthenticationInfo
-            //    {
-            //        Username = authentication.Username,
-            //        Password = authentication.Password
-            //    },
-            //    Directory = workingDirectory
-            //});
-            Logger.WriteInfo(string.Format("Project root is: {0}", projectRoot));
-            Logger.WriteInfo(string.Format("DotGit directory is: {0}", dotGitDirectory));
-            if (string.IsNullOrEmpty(dotGitDirectory) || string.IsNullOrEmpty(projectRoot))
-            {
-                // TODO Link to wiki article
-                throw new Exception(string.Format("Failed to prepare or find the .git directory in path '{0}'.", workingDirectory));
-            }
-
+				// TODO Can't use this, it still needs work
+				//var gitRepository = GitRepositoryFactory.CreateRepository(new RepositoryInfo
+				//{
+				//    Url = targetUrl,
+				//    Branch = targetBranch,
+				//    Authentication = new AuthenticationInfo
+				//    {
+				//        Username = authentication.Username,
+				//        Password = authentication.Password
+				//    },
+				//    Directory = workingDirectory
+				//});
+				Logger.WriteInfo(string.Format("Project root is: {0}", projectRoot));
+				Logger.WriteInfo(string.Format("DotGit directory is: {0}", dotGitDirectory));
+				if (string.IsNullOrEmpty(dotGitDirectory) || string.IsNullOrEmpty(projectRoot))
+				{
+					// TODO Link to wiki article
+					throw new Exception(string.Format("Failed to prepare or find the .git directory in path '{0}'.", workingDirectory));
+				}
+			}
             var cacheKey = GitVersionCacheKeyFactory.Create(fileSystem, gitPreparer, overrideConfig);
             var versionVariables = noCache ? default(VersionVariables) : gitVersionCache.LoadVersionVariablesFromDiskCache(gitPreparer, cacheKey);
             if (versionVariables == null)
@@ -115,7 +117,15 @@ namespace GitVersion
         VersionVariables ExecuteInternal(string targetBranch, string commitId, IGitPreparer gitPreparer, IBuildServer buildServer, Config overrideConfig = null)
         {
             var versionFinder = new GitVersionFinder();
-            var configuration = ConfigurationProvider.Provide(gitPreparer, fileSystem, overrideConfig: overrideConfig);
+
+			Config configuration;
+			if (!gitPreparer.IsAPIService()) {
+				configuration = ConfigurationProvider.Provide(gitPreparer, fileSystem, overrideConfig: overrideConfig);
+			} else
+			{
+				configuration = new Config();
+				ConfigurationProvider.ApplyDefaultsTo(configuration);
+			}
 
 			var repo = gitPreparer.GetRepository();
 			

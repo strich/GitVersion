@@ -137,8 +137,15 @@ namespace GitVersion
 
         static void VerifyConfiguration(Arguments arguments, IFileSystem fileSystem)
         {
-            var gitPreparer = new LibGitPreparer(arguments.TargetUrl, arguments.DynamicRepositoryLocation, 
+			IGitPreparer gitPreparer;
+			if (string.IsNullOrEmpty(arguments.ApiUrl))
+			{
+				gitPreparer = new LibGitPreparer(arguments.TargetUrl, arguments.DynamicRepositoryLocation,
 				arguments.Authentication, arguments.NoFetch, arguments.TargetPath);
+			} else {
+				gitPreparer = new GitHubPreparer(arguments.ApiUrl);
+			}
+
 			gitPreparer.Initialise(false, arguments.TargetBranch);
             ConfigurationProvider.Verify(gitPreparer, fileSystem);
         }

@@ -9,6 +9,7 @@ namespace GitVersion
 	using LibGit2Sharp;
 
 	using Octokit;
+	using System.Text.RegularExpressions;
 
 	public interface IGitPreparer
 	{
@@ -18,29 +19,31 @@ namespace GitVersion
 		string GetDotGitDirectory();
 		void Initialise(bool normaliseGitDirectory, string currentBranch);
 		Repository GetRepository();
+		bool IsAPIService();
 	}
 
-	public class ApiGitPreparer : IGitPreparer
+	public class GitHubPreparer : IGitPreparer
 	{
-		private string _apiUrl;
+		private string _targetUrl;
+		private string _repoOwnerName;
+		private string _repoName;
 		private GitHubClient _githubClient;
+		// TODO - This should probably be the unique user-agent key in this case?
+		private static ProductHeaderValue _productHeaderValue = new ProductHeaderValue("GitVersion");
+		private Repository _repository;
 
-		public ApiGitPreparer(string apiUrl)
+		public GitHubPreparer(string targetUrl)
 		{
-			_apiUrl = apiUrl;
-		}
+			_targetUrl = targetUrl;
 
-		private void Initialize()
-		{
-			if (_isInitialized) return;
-			if (string.IsNullOrEmpty(user.GitHubOAuthToken)) throw new AuthorizationException();
+			Regex regex = new Regex(@".*\/(.*)\/(.*)");
+			var matches = regex.Match(_targetUrl);
+			_repoOwnerName = matches.Groups[1].Value;
+			_repoName = matches.Groups[2].Value;
 
-			var gitCredentials = new Credentials(user.GitHubOAuthToken);
-
-			client.Credentials = gitCredentials;
-
-			_isInitialized = true;
-		}
+			_githubClient = new GitHubClient(_productHeaderValue);
+			_githubClient.Credentials = new Octokit.Credentials("s.t.richmond@gmail.com", "powerw00fer");
+		}		
 
 		public string GetWorkingDirectory() {
 			throw new NotImplementedException();
@@ -58,12 +61,66 @@ namespace GitVersion
 
 		public void Initialise(bool normaliseGitDirectory, string currentBranch)
 		{
-			throw new NotImplementedException();
+			// TODO: This is all fairly bad - Making shitloads of dupe Commit objects in branches, tags, etc
+			// TODO: Auth
+			// TODO: There are severe rate-limits for unauth'd reqs or reqs without an App ID. Need to handle this
+			// TODO: We're currently getting almost all commits twice - GetAll and Branch.GetAll for each branch. Fix this
+
+			// TODO: Should probably propagate async method sigs all the way up
+			var gitHubRepoTask = _githubClient.Repository.Get(_repoOwnerName, _repoName);
+			gitHubRepoTask.Wait();
+			var gitHubRepo = gitHubRepoTask.Result;
+
+			_repository = new Repository();			
+
+			// TODO: GetAll is paged and probably needs to actually be iterated to get ALL commits
+			var gitHubCommitsTask = _githubClient.Repository.Commit.GetAll(_repoOwnerName, _repoName);
+			gitHubCommitsTask.Wait();
+			var gitHubCommits = gitHubCommitsTask.Result.ToList();
+
+			_repository.Commits = new List<Commit>();
+			foreach (var githubCommit in gitHubCommits)
+			{
+				_repository.Commits.Add(new Commit(githubCommit, gitHubCommits));
+			}
+
+			var gitHubBranchesTask = _githubClient.Repository.Branch.GetAll(_repoOwnerName, _repoName);
+			gitHubBranchesTask.Wait();
+			var gitHubBranches = gitHubBranchesTask.Result.ToList();
+
+			_repository.Branches = new List<Branch>();
+			foreach (var gitHubBranch in gitHubBranches)
+			{
+				var branchCommitsTask = _githubClient.Repository.Commit.GetAll(_repoOwnerName, _repoName, 
+					new CommitRequest()
+					{
+						Sha = gitHubBranch.Name
+					});
+				branchCommitsTask.Wait();
+				var branchCommits = branchCommitsTask.Result.ToList();
+
+				var branch = new Branch(gitHubBranch, branchCommits, gitHubCommits);
+				_repository.Branches.Add(branch);
+
+				// Repo head:
+				if (gitHubRepo.DefaultBranch == gitHubBranch.Name)
+					_repository.Head = branch;
+			}
+
+			_repository.Tags = new List<Tag>();
+			var gitHubTagsTask = _githubClient.Repository.GetAllTags(_repoOwnerName, _repoName);
+			gitHubTagsTask.Wait();
+			var gitHubTags = gitHubTagsTask.Result.ToList();
 		}
 
 		public Repository GetRepository()
 		{
-			throw new NotImplementedException();
+			return _repository;
+		}
+
+		public bool IsAPIService()
+		{
+			return true;
 		}
 	}
 
@@ -230,7 +287,7 @@ namespace GitVersion
 
         static void CloneRepository(string repositoryUrl, string gitDirectory, AuthenticationInfo authentication)
         {
-			Credentials credentials = null;
+			LibGit2Sharp.Credentials credentials = null;
             if (!string.IsNullOrWhiteSpace(authentication.Username) && !string.IsNullOrWhiteSpace(authentication.Password))
             {
                 Logger.WriteInfo(string.Format("Setting up credentials using name '{0}'", authentication.Username));
@@ -277,6 +334,11 @@ namespace GitVersion
 		public Repository GetRepository()
 		{
 			return _repository;
+		}
+
+		public bool IsAPIService()
+		{
+			return false;
 		}
 	}
 }

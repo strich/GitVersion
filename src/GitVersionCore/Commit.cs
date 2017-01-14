@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace GitVersion
 {
@@ -39,6 +40,7 @@ namespace GitVersion
 		}
 
 		private IList<Tag> _tags;
+
 		public IList<Tag> Tags {
 			get { return _tags; }
 			set { _tags = value; }
@@ -98,6 +100,13 @@ namespace GitVersion
 			Name = committer.Name;
 			Email = committer.Email;
 		}
+
+		public Committer(Octokit.Committer committer)
+		{
+			Date = committer.Date;
+			Name = committer.Name;
+			Email = committer.Email;
+		}
 	}
 
 	public class Tag
@@ -120,6 +129,15 @@ namespace GitVersion
 				.Where(c => c.Sha == tag.Target.Sha).First());
 			PeeledTarget = new Commit(repo.Commits
 				.Where(c => c.Sha == tag.PeeledTarget.Sha).First());
+		}
+
+		public Tag(Octokit.RepositoryTag tag, IList<Octokit.GitHubCommit> allCommits)
+		{
+			CanonicalName = tag.Name;
+			Name = tag.Name;
+
+			Target = new Commit(allCommits.Single(c => c.Sha == tag.Commit.Sha), allCommits);
+			PeeledTarget = Target;
 		}
 	}
 
@@ -178,6 +196,18 @@ namespace GitVersion
 				StringComparison.OrdinalIgnoreCase);
 		}
 
+		public Branch(Octokit.Branch gitHubBranch, List<Octokit.GitHubCommit> branchCommits, 
+			IList<Octokit.GitHubCommit> allCommits)
+		{
+			Tip = new Commit(branchCommits.First(), allCommits); // TODO: First or last? Need to check
+			Commits = branchCommits.Select(c => new Commit(c, allCommits)).ToList();
+			IsTracking = false;
+			FriendlyName = gitHubBranch.Name;
+			CanonicalName = gitHubBranch.Name;
+			IsRemote = true;
+			_isDetachedHead = false;
+		}
+
 		/// <summary>
 		/// Checks if the two branch objects refer to the same branch (have the same friendly name).
 		/// </summary>
@@ -215,7 +245,16 @@ namespace GitVersion
 			Parents = libGitCommit.Parents.Select(c => new Commit(c)).ToList();
 			Committer = new Committer(libGitCommit.Committer);
 		}
-		
+
+		public Commit(Octokit.GitHubCommit gitHubCommit, IList<Octokit.GitHubCommit> allCommits)
+		{
+			Sha = gitHubCommit.Sha;
+			Message = gitHubCommit.Commit.Message;
+			Parents = gitHubCommit.Parents.Select(p => 
+				new Commit(allCommits.Single(c => c.Sha == p.Sha), allCommits))
+				.ToList();
+			Committer = new Committer(gitHubCommit.Commit.Committer);
+		}
 	}
 
 	public static class TopologicalSort
